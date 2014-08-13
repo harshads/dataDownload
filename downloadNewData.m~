@@ -30,7 +30,7 @@ function downloadNewData
     
     %%% Input session folder should match the pattern
     scanner = {'3T1', '3T2', '3T3'};
-    studyNo = {'.[A-Z0-9][A-Z0-9][A-Z0-9]_', '.[A-Z][A-Z]_', '.[0-9]_'};
+    studyNo = {'\.[A-Z0-9][A-Z0-9][A-Z0-9]_', '\.[A-Z][A-Z]_', '\.[0-9]_'};
     pattern = cellfun(@(y) cellfun(@(x) [y x], scanner, 'UniformOutput', false), studyNo, 'UniformOutput', false);
     pattern = [pattern{:}];
     
@@ -71,11 +71,30 @@ function downloadNewData
         
         curDir = pwd;
         cd(cur_parkingDir);
-        newDirs = checkBehavioral(newDirs);
+%         newDirs = checkBehavioral(newDirs);
         cd(curDir);
         
         if isempty(newDirs)
-            fprintf('Missing behavioral data\n');
+            fprintf('MISSING BEHAVIORAL DATA\n');
+            continue;
+        end
+        
+        %%% Check if any of the folders match the required pattern
+        %%% names (eg. YY-MM-DD.NO_3T2 etc)
+        sessionDirs = {};
+        for p = pattern;
+            sessionDirs = [sessionDirs newDirs(~cellfun(@isempty, regexp(newDirs, p{1})))];
+            newDirs = setdiff(newDirs, sessionDirs);
+            if isempty(newDirs)
+                fprintf('%s\n', p{1});
+                break;
+            end
+        end
+        
+        if isempty(sessionDirs)
+            fprintf('THE FOLLOWING SESSIONS DO NOT MATCH REQUIRED NAMING CONVENTION\n');
+            fprintf('CANNOT MOVE THE FOLLOWING FOLDERS\n');
+            cellfun(@(x) f
             continue;
         end
         
@@ -84,7 +103,7 @@ function downloadNewData
             mkdir(subjectDir);
         end
         
-        copyData = cellfun(@(x) sprintf('cp -r %s %s', fullfile(cur_parkingDir, x), subjectDir), newDirs, 'UniformOutput', false);
+        copyData = cellfun(@(x) sprintf('cp -r %s %s', fullfile(cur_parkingDir, x), subjectDir), sesionDirs, 'UniformOutput', false);
         
         
         fprintf('%s\n', copyData{:});
@@ -100,16 +119,7 @@ function downloadNewData
         %%% Helps to remove .DS_Store files
         system(['find ' subjectDir ' -type f -name ".DS_Store" -exec rm {} \;']);
 
-        %%% Check if any of the new sessions match the required pattern
-        %%% names (eg. YY-MM-DD.NO_3T2 etc)
-        sessionDirs = {};
-        for p = pattern;
-            sessionDirs = [sessionDirs unsortedDirs(~cellfun(@isempty, regexp(unsortedDirs, p{1})))];
-            unsortedDirs = setdiff(unsortedDirs, sessionDirs);
-            if isempty(unsortedDirs)
-                break;
-            end
-        end
+        
         
         %%% Remove empty cells
         sessionDirs(cellfun(@isempty, sessionDirs)) = [];
@@ -348,7 +358,7 @@ function out_scanInfo = getInformation(sessiondir)
             seriesNo = seriesNo(2:end);
             
             %%% Set the ExamNo, SeriesNo & ScanType
-            scanInfo.examno = ['E' num2str(examNo)];
+            scanInfo.examno = ['E' num2str(str2num(examNo))];
             scanInfo.seriesno = str2num(seriesNo(2:end));
             scanInfo.scantype = 'Functional';
             
@@ -436,7 +446,7 @@ function out_scanInfo = getInformation(sessiondir)
             end
                 
             scanInfo.scandate = dcmInfo.StudyDate;
-            scanInfo.examno = sprintf('E%s', dcmInfo.StudyID);
+            scanInfo.examno = sprintf('E%d', str2num(dcmInfo.StudyID));
             scanInfo.seriesno = dcmInfo.SeriesNumber;
                   
             scanInfo.sort = strcmp(scanInfo.scandate, session_scandate) && strcmp(scannerID, session_scanner);
@@ -647,7 +657,6 @@ function moveFiles(outdir, pattern, scanInfo)
     examNos = [];
     if exist('scanInfo', 'var')
         examNos = sort(unique(cellfun(@(s) s.examno, scanInfo, 'UniformOutput', false)));
-        examNos = cellfun(@(e) ['E' num2str(str2num(examNos{e}(2:end)))]
     end
     
     files = {};

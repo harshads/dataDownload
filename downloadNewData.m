@@ -30,7 +30,7 @@ function downloadNewData
     
     %%% Input session folder should match the pattern
     scanner = {'3T1', '3T2', '3T3'};
-    studyNo = {'.[A-Z0-9][A-Z0-9][A-Z0-9]_', '.[A-Z][A-Z]_', '.[0-9]_'};
+    studyNo = {'\.[A-Z0-9][A-Z0-9][A-Z0-9]_', '\.[A-Z][A-Z]_', '\.[0-9]_'};
     pattern = cellfun(@(y) cellfun(@(x) [y x], scanner, 'UniformOutput', false), studyNo, 'UniformOutput', false);
     pattern = [pattern{:}];
     
@@ -75,44 +75,48 @@ function downloadNewData
         cd(curDir);
         
         if isempty(newDirs)
-            fprintf('Missing behavioral data\n');
+            fprintf('MISSING BEHAVIORAL DATA\n');
             continue;
         end
         
+        %%% Check if any of the folders match the required pattern
+        %%% names (eg. YY-MM-DD.NO_3T2 etc)
+        sessionDirs = {};
+        for p = pattern;
+            sessionDirs = [sessionDirs newDirs(~cellfun(@isempty, regexp(newDirs, p{1})))];
+            newDirs = setdiff(newDirs, sessionDirs);
+            if isempty(newDirs)
+                fprintf('%s\n', p{1});
+                break;
+            end
+        end
+        
+        %%% Check if folder did not match required format
+        if ~isempty(newDirs)
+            fprintf('THE FOLLOWING SESSIONS DO NOT MATCH REQUIRED NAMING FORMAT\n');
+            fprintf('CANNOT MOVE THE FOLLOWING FOLDERS\n');
+            cellfun(@(x) fprintf('%s\n', fullfile(subjectDir, x)), newDirs);
+        end
+        
+        if isempty(sessionDirs)
+            fprintf('NO DATA TO SORT\n');
+            continue;
+        end
+
         %%% Copy the scan data from scanParking to sorting folder
         if ~exist(subjectDir, 'dir')
             mkdir(subjectDir);
         end
         
-        copyData = cellfun(@(x) sprintf('cp -r %s %s', fullfile(cur_parkingDir, x), subjectDir), newDirs, 'UniformOutput', false);
-        
-        
+        copyData = cellfun(@(x) sprintf('cp -r %s %s', fullfile(cur_parkingDir, x), subjectDir), sesionDirs, 'UniformOutput', false);
         fprintf('%s\n', copyData{:});
         tic, cellfun(@(x) system(x), copyData), toc;
-
-        %%% Check if new data was copied over
-        unsortedDirs = setdiff(getDirs(subjectDir), excludedDirs);
-        if isempty(unsortedDirs)
-            fprintf('No data to sort\n');
-            continue;
-        end
         
         %%% Helps to remove .DS_Store files
         system(['find ' subjectDir ' -type f -name ".DS_Store" -exec rm {} \;']);
 
-        %%% Check if any of the new sessions match the required pattern
-        %%% names (eg. YY-MM-DD.NO_3T2 etc)
-        sessionDirs = {};
-        for p = pattern;
-            sessionDirs = [sessionDirs unsortedDirs(~cellfun(@isempty, regexp(unsortedDirs, p{1})))];
-            unsortedDirs = setdiff(unsortedDirs, sessionDirs);
-            if isempty(unsortedDirs)
-                break;
-            end
-        end
-        
         %%% Remove empty cells
-        sessionDirs(cellfun(@isempty, sessionDirs)) = [];
+%         sessionDirs(cellfun(@isempty, sessionDirs)) = [];
 
         %%% For every new session 
         for s = 1:length(sessionDirs)
