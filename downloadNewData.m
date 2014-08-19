@@ -86,7 +86,6 @@ function downloadNewData
             sessionDirs = [sessionDirs newDirs(~cellfun(@isempty, regexp(newDirs, p{1})))];
             newDirs = setdiff(newDirs, sessionDirs);
             if isempty(newDirs)
-                fprintf('%s\n', p{1});
                 break;
             end
         end
@@ -108,7 +107,7 @@ function downloadNewData
             mkdir(subjectDir);
         end
         
-        copyData = cellfun(@(x) sprintf('cp -r %s %s', fullfile(cur_parkingDir, x), subjectDir), sesionDirs, 'UniformOutput', false);
+        copyData = cellfun(@(x) sprintf('cp -r %s %s', fullfile(cur_parkingDir, x), subjectDir), sessionDirs, 'UniformOutput', false);
         fprintf('%s\n', copyData{:});
         tic, cellfun(@(x) system(x), copyData), toc;
         

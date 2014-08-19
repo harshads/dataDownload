@@ -6,8 +6,8 @@ addpath /Volumes/ToolsMac/SPM/fMRItools/
 
 setMatlabEnv;
 
-% spm('defaults', 'fmri');
-% spm_jobman('initcfg');
+spm('defaults', 'fmri');
+spm_jobman('initcfg');
 
 conn = mysqlConnect;
 
